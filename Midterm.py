@@ -1,4 +1,6 @@
 from ast import Index
+from json import encoder
+from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib
 import model2 as model2
@@ -44,11 +46,8 @@ from sklearn.metrics import roc_curve, auc
 ### 2 Obtain the dataset to be used in the analysis
 wine_df = pd.read_csv('winemag-data-130k-v2.csv')
 
-
-
 ## Create duplicate wine_df dataframe
 wine_duplicate = wine_df.copy()
-
 
 ## print(wine_duplicate.describe())
 #                   id         points          price
@@ -78,10 +77,9 @@ wine_duplicate = wine_df.copy()
 np.where(wine_duplicate["region_1"] == 'NaN', wine_duplicate['region_2'], wine_duplicate['region_1'])
 np.where(wine_duplicate["taster_name"] == 'NaN', wine_duplicate['taster_twitter_handle'], wine_duplicate['taster_name'])
 
-
 # delete if price is above 250
-wine_duplicate = wine_duplicate[wine_duplicate['price'].between(4, 250)]
-
+wine_duplicate = wine_duplicate[wine_duplicate['price'].between(15, 55)]
+wine_duplicate = wine_duplicate[wine_duplicate['points'].between(90, 105)]
 np.where(wine_duplicate["price"] == 'NaN', wine_duplicate['taster_twitter_handle'], wine_duplicate['taster_name'])
 # drop null row
 wine_duplicate = wine_duplicate[wine_duplicate['country'].notna()]
@@ -89,7 +87,7 @@ wine_duplicate = wine_duplicate[wine_duplicate['price'].notna()]
 wine_duplicate = wine_duplicate[wine_duplicate['region_1'].notna()]
 
 # converting all null to zero (0)
-# wine_duplicate['country'].fillna(0, inplace=True)
+wine_duplicate['country'].fillna(0, inplace=True)
 wine_duplicate['designation'].fillna(0, inplace=True)
 wine_duplicate['price'].fillna(0, inplace=True)
 wine_duplicate['province'].fillna(0, inplace=True)
@@ -99,9 +97,9 @@ wine_duplicate['taster_name'].fillna(0, inplace=True)
 wine_duplicate['taster_twitter_handle'].fillna(0, inplace=True)
 
 
-# plt.hist(wine_df['region_1'])
+# plt.hist(wine_duplicate['price'])
 # plt.show()
-# print(wine_duplicate.info())
+# print(wine_duplicate.count())
 
 #1 4-10-->VALUE
 #2 10-15-->POPULAR_PREMIUM
@@ -125,7 +123,9 @@ wine_duplicate = pd.concat([wine_duplicate, dummy_price_category], axis=1)
 # print(dummy_price_category.head())
 dummy_country = pd.get_dummies(wine_duplicate["country"])
 wine_duplicate = pd.concat([wine_duplicate, dummy_country], axis=1)
-# print(wine_duplicate.head())
+cols = wine_duplicate.columns.tolist()
+wine_duplicate = wine_duplicate.reindex(columns=cols).fillna(0)
+# print(wine_duplicate.describe())
 
 # print(wine_duplicate.groupby("taster_twitter_handle")["id"].count())
 
@@ -166,21 +166,21 @@ wine_duplicate.rename(columns={'region_1': 'region'}, inplace=True)
 # wine_duplicate['country'] = wine_duplicate['country'].astype(float)
 wine_duplicate['points'] = wine_duplicate['points'].astype(float)
 wine_duplicate['id'] = wine_duplicate['id'].astype(int64)
-wine_duplicate['Argentina'] = wine_duplicate['Argentina'].astype(int64)
-wine_duplicate['Australia'] = wine_duplicate['Australia'].astype(int64)
-wine_duplicate['Canada'] = wine_duplicate['Canada'].astype(int64)
-wine_duplicate['France'] = wine_duplicate['France'].astype(int64)
-wine_duplicate['Italy'] = wine_duplicate['Italy'].astype(int64)
-wine_duplicate['Spain'] = wine_duplicate['Spain'].astype(int64)
-wine_duplicate['US'] = wine_duplicate['US'].astype(int64)
-wine_duplicate['VALUE'] = wine_duplicate['VALUE'].astype(int64)
-wine_duplicate['POPULAR_PREMIUM'] = wine_duplicate['POPULAR_PREMIUM'].astype(int64)
-wine_duplicate['PREMIUM'] = wine_duplicate['PREMIUM'].astype(int64)
-wine_duplicate['SUPPER_PREMIUM'] = wine_duplicate['SUPPER_PREMIUM'].astype(int64)
-wine_duplicate['ULTRA_PREMIUM'] = wine_duplicate['ULTRA_PREMIUM'].astype(int64)
-wine_duplicate['LUXURY'] = wine_duplicate['LUXURY'].astype(int64)
-wine_duplicate['SUPER_LUXURY'] = wine_duplicate['SUPER_LUXURY'].astype(int64)
-wine_duplicate['ICON'] = wine_duplicate['ICON'].astype(int64)
+# wine_duplicate['Argentina'] = wine_duplicate['Argentina'].astype(int64)
+# wine_duplicate['Australia'] = wine_duplicate['Australia'].astype(int64)
+# wine_duplicate['Canada'] = wine_duplicate['Canada'].astype(int64)
+# wine_duplicate['France'] = wine_duplicate['France'].astype(int64)
+# wine_duplicate['Italy'] = wine_duplicate['Italy'].astype(int64)
+# wine_duplicate['Spain'] = wine_duplicate['Spain'].astype(int64)
+# wine_duplicate['US'] = wine_duplicate['US'].astype(int64)
+# wine_duplicate['VALUE'] = wine_duplicate['VALUE'].astype(int64)
+# wine_duplicate['POPULAR_PREMIUM'] = wine_duplicate['POPULAR_PREMIUM'].astype(int64)
+# wine_duplicate['PREMIUM'] = wine_duplicate['PREMIUM'].astype(int64)
+# wine_duplicate['SUPPER_PREMIUM'] = wine_duplicate['SUPPER_PREMIUM'].astype(int64)
+# wine_duplicate['ULTRA_PREMIUM'] = wine_duplicate['ULTRA_PREMIUM'].astype(int64)
+# wine_duplicate['LUXURY'] = wine_duplicate['LUXURY'].astype(int64)
+# wine_duplicate['SUPER_LUXURY'] = wine_duplicate['SUPER_LUXURY'].astype(int64)
+# wine_duplicate['ICON'] = wine_duplicate['ICON'].astype(int64)
 
 # print(wine_duplicate.dtypes)
 # id                   int64
@@ -208,10 +208,6 @@ wine_duplicate['ICON'] = wine_duplicate['ICON'].astype(int64)
 # dtype: object
 
 
-# print(wine_duplicate.describe())
-# plt.hist(wine_duplicate['US'])
-# plt.show()
-
 # show histogram
 # for col in wine_duplicate.columns:
 #     hist = wine_duplicate[col].hist(bins=100)
@@ -223,13 +219,13 @@ wine_duplicate['ICON'] = wine_duplicate['ICON'].astype(int64)
 
 ## 4 Reduce data dimension (if necessary)
 
-Index(['id', 'points', 'ICON', 'LUXURY', 'POPULAR_PREMIUM', 'PREMIUM', 'SUPER_LUXURY', 'SUPPER_PREMIUM', 'ULTRA_PREMIUM', 'VALUE', 'Argentina', 'Australia', 'Canada', 'France', 'Italy', 'Spain', 'US'],
+Index(['id', 'points', 'LUXURY', 'POPULAR_PREMIUM', 'PREMIUM', 'SUPPER_PREMIUM', 'ULTRA_PREMIUM', 'Argentina', 'Australia', 'Canada', 'France', 'Italy', 'Spain', 'US'],
       dtype='object')
-predictors = ['ICON', 'LUXURY', 'POPULAR_PREMIUM', 'PREMIUM', 'SUPER_LUXURY', 'SUPPER_PREMIUM', 'ULTRA_PREMIUM', 'VALUE', 'Argentina', 'Australia', 'Canada', 'France', 'Italy', 'Spain', 'US']
+predictors = ['LUXURY', 'POPULAR_PREMIUM', 'PREMIUM', 'SUPPER_PREMIUM', 'ULTRA_PREMIUM', 'Argentina', 'Australia', 'Canada', 'France', 'Italy', 'Spain', 'US']
 outcome = 'points'
 
 #6 Partition the data( for supervised tasks)
-train, validate = train_test_split(wine_duplicate, test_size=0.40, random_state=1)
+train, validate = train_test_split(wine_duplicate, test_size=0.25, random_state=1)
 # print("Training : ", train.shape)
 # print("Validation :  ", validate.shape)
 
@@ -248,22 +244,25 @@ validate, test = train_test_split(temp, test_size=0.3, random_state=1)
 
 X = train[predictors]
 y = train[outcome]
-# print(X.shape)
 # (50700, 8)
-train_X, valid_X, train_y, valid_y = train_test_split(X, y, test_size=0.4, random_state=1)
-## ## Logistic Regression
-logit_reg = LogisticRegression(penalty="l2", C=1e42, solver='liblinear', class_weight='balanced')
+train_X, valid_X, train_y, valid_y = train_test_split(X, y, test_size=0.3, random_state=1)
+# ## ## Logistic Regression
+# logit_reg = LogisticRegression(penalty="l2", C=1e42, solver='liblinear', class_weight='balanced')
+logit_reg = LogisticRegression()
+
 logit_reg.fit(train_X, train_y)
 
+# score = logit_reg.score(train_X, train_y)
+# print(score)
 
-# print(pd.DataFrame({'coeff': logit_reg.coef_[0]}, index=X.columns))
-# regressionSummary(train_y, logit_reg.predict(train_X))
-# Model Metrics
-# classificationSummary(train_y, logit_reg.predict(train_X))
-# classificationSummary(valid_y, logit_reg.predict(valid_X))
-# from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-lr_prediction_train = logit_reg.predict_proba(train_X)[:, 1] > 0.9
-lr_prediction_valid = logit_reg.predict_proba(valid_X)[:, 1] > 0.9
+print(pd.DataFrame({'coeff': logit_reg.coef_[0]}, index=X.columns))
+regressionSummary(train_y, logit_reg.predict(train_X))
+# # Model Metrics
+classificationSummary(train_y, logit_reg.predict(train_X))
+classificationSummary(valid_y, logit_reg.predict(valid_X))
+# # from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+lr_prediction_train = logit_reg.predict_proba(train_X)[:, 1] > 0.5
+lr_prediction_valid = logit_reg.predict_proba(valid_X)[:, 1] > 0.5
 # print("LR Accuracy on train is:", accuracy_score(train_y, lr_prediction_train))
 # print("LR Accuracy on test is:", accuracy_score(valid_y, lr_prediction_valid))
 # print("LR Precision_score train is:", precision_score(train_y, lr_prediction_train, average='micro'))
@@ -273,71 +272,69 @@ lr_prediction_valid = logit_reg.predict_proba(valid_X)[:, 1] > 0.9
 # print("LR f1_score on train is:", f1_score(train_y, lr_prediction_train, average='micro'))
 # print("LR f1_score on test is:", f1_score(valid_y, lr_prediction_valid, average='micro'))
 
-# # Decision Tree
+# # # Decision Tree
 DecisionTree = DecisionTreeClassifier(max_depth=4)
 DecisionTree.fit(train_X, train_y)
 
-# plotDecisionTree(DecisionTree, feature_names=train_X.columns)
-# # fig, ax = plt.subplots(figsize=(8, 10))
-# # tree.plot_tree(DecisionTree, fontsize=6)
-# # plt.show()
-# dot_data = export_graphviz(DecisionTree, filled=True, rounded=True,
-#                                     class_names=['Setosa',
-#                                                 'Versicolor',
-#                                                 'Virginica'],
-#                                     feature_names=['predictors'],
-#                                     out_file=None)
-# graph = graph_from_dot_data(dot_data)
-# graph.write_png('tree.png')
-# # graph = graphviz.Source(DecisionTree, format="png")
-# # graph.render("decision_tree_graphivz")
-#
-# # dot_data = StringIO()
-# # export_graphviz(DecisionTree, out_file=dot_data,
-# #                 filled=True, rounded=True,
-# #                 special_characters=True, feature_names = predictors, class_names=['0', '1'])
-# # graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
-# # graph.write_png('wine.png')
-# # Image(graph.create_png())
-#
+# # plotDecisionTree(DecisionTree, feature_names=train_X.columns)
+# # # fig, ax = plt.subplots(figsize=(8, 10))
+# # # tree.plot_tree(DecisionTree, fontsize=6)
+# # # plt.show()
+# # dot_data = export_graphviz(DecisionTree, filled=True, rounded=True,
+# #                                     class_names=['Setosa',
+# #                                                 'Versicolor',
+# #                                                 'Virginica'],
+# #                                     feature_names=['predictors'],
+# #                                     out_file=None)
+# # graph = graph_from_dot_data(dot_data)
+# # graph.write_png('tree.png')
+# # # graph = graphviz.Source(DecisionTree, format="png")
+# # # graph.render("decision_tree_graphivz")
+# #
+# # # dot_data = StringIO()
+# # # export_graphviz(DecisionTree, out_file=dot_data,
+# # #                 filled=True, rounded=True,
+# # #                 special_characters=True, feature_names = predictors, class_names=['0', '1'])
+# # # graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+# # # graph.write_png('wine.png')
+# # # Image(graph.create_png())
+# #
 importances = DecisionTree.feature_importances_
 #
 im = pd.DataFrame({'feature': train_X.columns, 'importance': importances})
 im = im.sort_values('importance',ascending=False)
-# print(im)
-#
-#
+print(im)
+# #
+# #
 dt_prediction_train = DecisionTree.predict(train_X)
 dt_prediction_valid = DecisionTree.predict(valid_X)
-
-# print("DT Accuracy score on train is:", accuracy_score(train_y, dt_prediction_train))
-# print("DT Accuracy score on test is:", accuracy_score(valid_y, dt_prediction_valid))
-# print("DT Precision score on train is:", precision_score(train_y, dt_prediction_train, average='micro'))
-# print("DT Precision score on test is:", precision_score(valid_y, dt_prediction_valid, average='micro'))
-# print("DT Recall score on train is:", recall_score(train_y, dt_prediction_train, average='micro'))
-# print("DT Recall score on test is:", recall_score(valid_y, dt_prediction_valid, average='micro'))
-# print("DT F1 score on train is:", f1_score(train_y, dt_prediction_train, average='micro'))
+#
+print("DT Accuracy score on train is:", accuracy_score(train_y, dt_prediction_train))
+print("DT Accuracy score on test is:", accuracy_score(valid_y, dt_prediction_valid))
+print("DT Precision score on train is:", precision_score(train_y, dt_prediction_train, average='micro'))
+print("DT Precision score on test is:", precision_score(valid_y, dt_prediction_valid, average='micro'))
+print("DT Recall score on train is:", recall_score(train_y, dt_prediction_train, average='micro'))
+print("DT Recall score on test is:", recall_score(valid_y, dt_prediction_valid, average='micro'))
+print("DT F1 score on train is:", f1_score(train_y, dt_prediction_train, average='micro'))
 
 # Naive Bayes
 nb = GaussianNB()
 nb.fit(train_X, train_y)
-#
-# # # predict probabilities
-prediction_train = nb.predict_proba(train_X)
-prediction_valid = nb.predict_proba(valid_X)
 # #
-# # #Model matrix
+# # # predict probabilities
+ #
+# # # #Model matrix
 nb_prediction_train = nb.predict(train_X)
 nb_prediction_valid = nb.predict(valid_X)
-#
-# print("NB_Accuracy on train is:",accuracy_score(train_y,nb_prediction_train))
-# print("NB_Accuracy on test is:",accuracy_score(valid_y,nb_prediction_valid))
-# print("NB_Precision_score train is:",precision_score(train_y,nb_prediction_train, average='micro'))
-# print("NB_Precision_score on test is:",precision_score(valid_y,nb_prediction_valid, average='micro'))
-# print("NB_Recall_score on train is:",recall_score(train_y,nb_prediction_train, average='micro'))
-# print("NB_Recall_score on test is:",recall_score(valid_y,nb_prediction_valid, average='micro'))
-# print("NB_f1_score on train is:",f1_score(train_y,nb_prediction_train, average='micro'))
-# print("NB_f1_score on test is:",f1_score(valid_y,nb_prediction_valid, average='micro'))
+
+print("NB_Accuracy on train is:",accuracy_score(train_y,nb_prediction_train))
+print("NB_Accuracy on test is:",accuracy_score(valid_y,nb_prediction_valid))
+print("NB_Precision_score train is:",precision_score(train_y,nb_prediction_train, average='micro'))
+print("NB_Precision_score on test is:",precision_score(valid_y,nb_prediction_valid, average='micro'))
+print("NB_Recall_score on train is:",recall_score(train_y,nb_prediction_train, average='micro'))
+print("NB_Recall_score on test is:",recall_score(valid_y,nb_prediction_valid, average='micro'))
+print("NB_f1_score on train is:",f1_score(train_y,nb_prediction_train, average='micro'))
+print("NB_f1_score on test is:",f1_score(valid_y,nb_prediction_valid, average='micro'))
 #
 # # #Random forest
 rf = RandomForestClassifier(random_state=0)
@@ -345,14 +342,14 @@ cc_rf = rf.fit(train_X.values, train_y.values.ravel())
 rf_prediction_train = cc_rf.predict(train_X)
 rf_prediction_valid = cc_rf.predict(valid_X)
 #
-# print("RF_Accuracy on train is:",accuracy_score(train_y,rf_prediction_train))
-# print("RF_Accuracy on test is:",accuracy_score(valid_y,rf_prediction_valid))
-# print("RF_Precision_score train is:",precision_score(train_y,rf_prediction_train, average='micro'))
-# print("RF_Precision_score on test is:",precision_score(valid_y,rf_prediction_valid, average='micro'))
-# print("RF_Recall_score on train is:",recall_score(train_y,rf_prediction_train, average='micro'))
-# print("RF_Recall_score on test is:",recall_score(valid_y,rf_prediction_valid, average='micro'))
-# print("RF_f1_score on train is:",f1_score(train_y,rf_prediction_train, average='micro'))
-# print("RF_f1_score on test is:",f1_score(valid_y,rf_prediction_valid, average='micro'))
+print("RF_Accuracy on train is:",accuracy_score(train_y,rf_prediction_train))
+print("RF_Accuracy on test is:",accuracy_score(valid_y,rf_prediction_valid))
+print("RF_Precision_score train is:",precision_score(train_y,rf_prediction_train, average='micro'))
+print("RF_Precision_score on test is:",precision_score(valid_y,rf_prediction_valid, average='micro'))
+print("RF_Recall_score on train is:",recall_score(train_y,rf_prediction_train, average='micro'))
+print("RF_Recall_score on test is:",recall_score(valid_y,rf_prediction_valid, average='micro'))
+print("RF_f1_score on train is:",f1_score(train_y,rf_prediction_train, average='micro'))
+print("RF_f1_score on test is:",f1_score(valid_y,rf_prediction_valid, average='micro'))
 
 # # Gradient Boosted Trees¶
 gbm = GradientBoostingClassifier(random_state=0)
@@ -364,24 +361,24 @@ importances = list(zip(gbm.feature_importances_, wine_duplicate.columns))
 gbt_prediction_train = gbm.predict(train_X)
 gbt_prediction_valid = gbm.predict(valid_X)
 
-# print("GB_Accuracy on train is:", accuracy_score(train_y,gbt_prediction_train))
-# print("GB_Accuracy on test is:", accuracy_score(valid_y,gbt_prediction_valid))
-# print("GB_Precision_score train is:", precision_score(train_y,gbt_prediction_train, average='micro'))
-# print("GB_Precision_score on test is:", precision_score(valid_y,gbt_prediction_valid,  average='micro'))
-# print("GB_Recall_score on train is:", recall_score(train_y,gbt_prediction_train, average='micro'))
-# print("GB_Recall_score on test is:", recall_score(valid_y,gbt_prediction_valid, average='micro'))
-# print("GB_f1_score on train is:", f1_score(train_y,gbt_prediction_train, average='micro'))
-# print("GB_f1_score on test is:", f1_score(valid_y,gbt_prediction_valid, average='micro'))
+print("GB_Accuracy on train is:", accuracy_score(train_y,gbt_prediction_train))
+print("GB_Accuracy on test is:", accuracy_score(valid_y,gbt_prediction_valid))
+print("GB_Precision_score train is:", precision_score(train_y,gbt_prediction_train, average='micro'))
+print("GB_Precision_score on test is:", precision_score(valid_y,gbt_prediction_valid,  average='micro'))
+print("GB_Recall_score on train is:", recall_score(train_y,gbt_prediction_train, average='micro'))
+print("GB_Recall_score on test is:", recall_score(valid_y,gbt_prediction_valid, average='micro'))
+print("GB_f1_score on train is:", f1_score(train_y,gbt_prediction_train, average='micro'))
+print("GB_f1_score on test is:", f1_score(valid_y,gbt_prediction_valid, average='micro'))
 # #
 #
 # # Neural Network
 
-scaler = MinMaxScaler()
-X_scale=scaler.fit_transform(X)
+# scaler = MinMaxScaler()
+# X_scale=scaler.fit_transform(X)
 # print(X_scale.shape)
-y_tr = wine_duplicate[[outcome]] # for neural network only because this model need to get y_df.shape[1]
-train_X_nn, valid_X_nn, train_y_nn, valid_y_nn = train_test_split(X_scale, y_tr, test_size=0.3, random_state=1)
-
+# # y_tr = wine_duplicate[[outcome]] # for neural network only because this model need to get y_df.shape[1]
+# train_X_nn, valid_X_nn, train_y_nn, valid_y_nn = train_test_split(X_scale, y_tr, test_size=0.3, random_state=1)
+#
 # model2 = tf.keras.Sequential([ tf.keras.layers.Flatten(),
 #                              tf.keras.layers.Dense(units=128, activation=tf.nn.relu),
 #                              tf.keras.layers.Dense(units=1,activation=tf.nn.sigmoid)])
